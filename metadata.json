@@ -1,0 +1,6 @@
+{
+  "name": "Toko Pecahan Ceria",
+  "description": "Game simulasi restoran edukasi matematika interaktif untuk siswa Fase B SD belajar pecahan dasar, pecahan senilai, desimal, dan persen.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
