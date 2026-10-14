@@ -3,7 +3,7 @@ import React from 'react';
 interface FractionDisplayProps {
   numerator: number;
   denominator: number;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   textColor?: string;
   lineColor?: string;
   suffix?: string;
@@ -20,15 +20,41 @@ export const FractionDisplay: React.FC<FractionDisplayProps> = ({
   showBarPreview = false,
 }) => {
   const sizeConfig = {
-    sm: { num: 'text-sm', den: 'text-sm', line: 'h-0.5 min-w-[18px]', container: 'gap-0.5' },
-    md: { num: 'text-base font-bold', den: 'text-base font-bold', line: 'h-0.5 min-w-[24px]', container: 'gap-0.5' },
-    lg: { num: 'text-xl font-bold', den: 'text-xl font-bold', line: 'h-1 min-w-[32px]', container: 'gap-0.5' },
-    xl: { num: 'text-3xl font-extrabold', den: 'text-3xl font-extrabold', line: 'h-1.5 min-w-[44px]', container: 'gap-1' },
+    xs: {
+      num: 'text-[10px] font-black leading-none',
+      den: 'text-[10px] font-black leading-none',
+      line: 'h-[1.5px] min-w-[14px]',
+      container: 'gap-[1px] py-[1px]',
+    },
+    sm: {
+      num: 'text-xs font-black leading-none',
+      den: 'text-xs font-black leading-none',
+      line: 'h-[1.5px] min-w-[16px]',
+      container: 'gap-[1px] py-[1px]',
+    },
+    md: {
+      num: 'text-sm font-black leading-none',
+      den: 'text-sm font-black leading-none',
+      line: 'h-[2px] min-w-[20px]',
+      container: 'gap-[1.5px] py-[1px]',
+    },
+    lg: {
+      num: 'text-lg font-black leading-none',
+      den: 'text-lg font-black leading-none',
+      line: 'h-[2.5px] min-w-[28px]',
+      container: 'gap-0.5 py-0.5',
+    },
+    xl: {
+      num: 'text-2xl font-black leading-none',
+      den: 'text-2xl font-black leading-none',
+      line: 'h-[3px] min-w-[36px]',
+      container: 'gap-1 py-0.5',
+    },
   }[size];
 
   return (
-    <div className="inline-flex items-center gap-1.5 align-middle">
-      <div className={`inline-flex flex-col items-center justify-center leading-none ${sizeConfig.container}`}>
+    <div className="inline-flex items-center gap-1 align-middle shrink-0">
+      <div className={`inline-flex flex-col items-center justify-center ${sizeConfig.container}`}>
         <span className={`${sizeConfig.num} ${textColor} tracking-tight select-none`}>
           {numerator}
         </span>
@@ -38,12 +64,12 @@ export const FractionDisplay: React.FC<FractionDisplayProps> = ({
         </span>
       </div>
       {suffix && (
-        <span className={`font-semibold ${sizeConfig.num} ${textColor} select-none`}>
+        <span className={`font-bold ${sizeConfig.num} ${textColor} select-none ml-0.5`}>
           {suffix}
         </span>
       )}
       {showBarPreview && denominator > 0 && (
-        <div className="w-12 h-3.5 bg-gray-200 rounded-md border border-gray-400 overflow-hidden flex">
+        <div className="w-10 h-3 bg-gray-200 rounded-md border border-gray-400 overflow-hidden flex ml-1">
           {Array.from({ length: denominator }).map((_, i) => (
             <div
               key={i}

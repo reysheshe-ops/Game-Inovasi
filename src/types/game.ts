@@ -1,12 +1,20 @@
 /**
  * Game Types for "Toko Pecahan Ceria"
+ * Designed according to SD Fase B Mathematics Learning Objectives (SOLO Taxonomy)
  */
 
-export type DishType = 'pizza' | 'chocolate' | 'donut' | 'juice';
+export type DishType = 'pizza' | 'chocolate' | 'donut' | 'pudding';
 
 export interface FractionValue {
   numerator: number;
   denominator: number;
+}
+
+export interface ComparisonDetail {
+  optionA: { fraction: FractionValue; value: number };
+  optionB: { fraction: FractionValue; value: number };
+  requirement: 'larger' | 'smaller';
+  correctFraction: FractionValue;
 }
 
 export interface CustomerOrder {
@@ -14,32 +22,47 @@ export interface CustomerOrder {
   customerName: string;
   avatarSeed: number;
   dishType: DishType;
-  promptText: string; // Text on speech bubble
-  hintText: string; // Explanatory text for correction modal
+  promptText: string; // Speech bubble text
+  hintText: string; // Master Chef hint for correction pause
   verticalFraction?: FractionValue;
-  decimalValue?: number; // e.g. 0.5, 0.25, 0.75, 1.0
-  percentValue?: number; // e.g. 25, 50, 75, 100
   // Target numeric value (0 to 1) for checking correctness
   targetNumericValue: number;
-  // Category for teacher report accuracy
-  category: 'basic' | 'equivalent' | 'decimal_percent';
-  // Extra comparison info if applicable
-  isComparisonQuestion?: boolean;
-  comparisonOptions?: { label: string; fraction: FractionValue; value: number }[];
-  patience: number; // Current patience in seconds
-  maxPatience: number; // Max patience
-  failedAttempts: number; // Counter for correction pause trigger (>= 2)
+  // For Level 2 (Ordering): Target sequence of fractions in ascending order
+  targetSequence?: FractionValue[];
+  // For Level 3 (Equivalent Fractions): Accepted numerical values (e.g. 0.5 can be 3/6 or 4/8)
+  acceptedValues?: number[];
+  // For Level 4 (Comparison):
+  comparisonDetails?: ComparisonDetail;
+  // Category for pedagogical report
+  category:
+    | 'unistructural'
+    | 'multistructural_ordering'
+    | 'multistructural_equivalent'
+    | 'relational_comparison';
+  patience: number;
+  maxPatience: number;
+  failedAttempts: number;
 }
 
 export interface PlatedItem {
   dishType: DishType;
+  // Level 1: Pizza
   pizzaSlices?: {
-    fractionPerSlice: FractionValue; // e.g. 1/2, 1/4, 1/8
+    fractionPerSlice: FractionValue;
     count: number;
   };
-  chocolatePieces?: number; // out of 4 (e.g. 1/4 each)
-  donutCount?: number; // out of 6 (e.g. 1/6 each)
-  juiceVolume?: number; // 0.0 to 1.0
+  // Level 2: Chocolate ordering (3 slots: [slot1, slot2, slot3])
+  chocolateSlots?: (FractionValue | null)[];
+  // Level 3: Donut boxes (box of 6 or box of 8)
+  donutBox?: {
+    boxType: 6 | 8;
+    count: number;
+  };
+  // Level 4: Pudding comparison choice
+  puddingChoice?: {
+    fraction: FractionValue;
+    value: number;
+  };
 }
 
 export interface GameLevel {
@@ -47,12 +70,13 @@ export interface GameLevel {
   title: string;
   subtitle: string;
   areaName: string;
+  cognitiveFocus: 'Unistructural' | 'Multistructural' | 'Relational';
   description: string;
   timeLimitSeconds: number;
   unlockedByDefault: boolean;
   dishTypes: DishType[];
   targetScore: number;
-  starThresholds: [number, number, number]; // e.g. [30, 60, 90]
+  starThresholds: [number, number, number];
 }
 
 export interface SessionReportItem {
@@ -65,9 +89,10 @@ export interface SessionReportItem {
   totalOrders: number;
   correctOrders: number;
   wrongOrders: number;
-  basicAccuracy: number;
-  equivalentAccuracy: number;
-  decimalPercentAccuracy: number;
+  level1Accuracy: number; // Mengenali Pecahan
+  level2Accuracy: number; // Mengurutkan Pecahan
+  level3Accuracy: number; // Pecahan Senilai
+  level4Accuracy: number; // Membandingkan Pecahan
   averageTimeSeconds: number;
   date: string;
 }
@@ -75,6 +100,6 @@ export interface SessionReportItem {
 export interface StudentProfile {
   name: string;
   totalCoins: number;
-  starsEarned: Record<number, number>; // levelId -> stars
-  highScores: Record<number, number>; // levelId -> score
+  starsEarned: Record<number, number>; // levelId -> stars (1..4)
+  highScores: Record<number, number>; // levelId -> score (1..4)
 }

@@ -12,13 +12,14 @@ import { LevelSelectMap } from './components/LevelSelectMap';
 import { GameScreen } from './components/GameScreen';
 import { RecipeBookModal } from './components/RecipeBookModal';
 import { TeacherReportModal } from './components/TeacherReportModal';
+import { StudentLoginModal } from './components/StudentLoginModal';
 import { OfflineIndicator } from './components/PWAInstallButton';
 
 const INITIAL_PROFILE: StudentProfile = {
-  name: 'Koki Budi',
+  name: 'Koki Cilik',
   totalCoins: 0,
-  starsEarned: { 1: 0, 2: 0, 3: 0 },
-  highScores: { 1: 0, 2: 0, 3: 0 },
+  starsEarned: { 1: 0, 2: 0, 3: 0, 4: 0 },
+  highScores: { 1: 0, 2: 0, 3: 0, 4: 0 },
 };
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
   const [activeLevelId, setActiveLevelId] = useState<number>(1);
   const [showRecipeBook, setShowRecipeBook] = useState<boolean>(false);
   const [showTeacherReport, setShowTeacherReport] = useState<boolean>(false);
+  const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
 
   // Student Profile state
   const [profile, setProfile] = useState<StudentProfile>(() => {
@@ -65,16 +67,45 @@ export default function App() {
     }
   }, [sessionReports]);
 
+  // Check if student has answered the name prompt
+  const handleLoadingComplete = () => {
+    setScreen('main_menu');
+    const hasNamed = localStorage.getItem('tokoperahan_has_named');
+    if (!hasNamed) {
+      setShowLoginModal(true);
+    }
+  };
+
   const handleUpdateProfile = (newProfile: StudentProfile) => {
     setProfile(newProfile);
   };
 
   const handleUpdateProfileName = (newName: string) => {
     setProfile((prev) => ({ ...prev, name: newName }));
+    localStorage.setItem('tokoperahan_has_named', 'true');
   };
 
   const handleSaveSessionReport = (newReport: SessionReportItem) => {
     setSessionReports((prev) => [newReport, ...prev]);
+
+    // Optional background auto-sync to cloud if configured
+    try {
+      const webhookUrl = localStorage.getItem('tokoperahan_webhook_url');
+      if (webhookUrl) {
+        fetch(webhookUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentName: profile.name,
+            report: newReport,
+            timestamp: new Date().toISOString(),
+          }),
+        }).catch(() => {});
+      }
+    } catch {
+      // silent background sync failure
+    }
   };
 
   const handleClearReports = () => {
@@ -118,7 +149,7 @@ export default function App() {
       <div className="w-full max-w-[calc(100vh*16/9)] h-full max-h-[calc(100vw*9/16)] aspect-[16/9] bg-amber-50 relative overflow-hidden shadow-2xl flex flex-col">
         {/* 1. Loading Screen */}
         {screen === 'loading' && (
-          <LoadingScreen onComplete={() => setScreen('main_menu')} />
+          <LoadingScreen onComplete={handleLoadingComplete} />
         )}
 
         {/* 2. Main Menu */}
@@ -129,6 +160,7 @@ export default function App() {
             onOpenRecipeBook={() => setShowRecipeBook(true)}
             onOpenTeacherReport={() => setShowTeacherReport(true)}
             onUpdateProfileName={handleUpdateProfileName}
+            onPromptLogin={() => setShowLoginModal(true)}
           />
         )}
 
@@ -156,12 +188,25 @@ export default function App() {
             onSaveSessionReport={handleSaveSessionReport}
             onBackToMap={() => setScreen('level_map')}
             onNextLevel={
-              activeLevel.id < 3
+              activeLevel.id < 4
                 ? () => {
                     setActiveLevelId(activeLevel.id + 1);
                   }
                 : undefined
             }
+          />
+        )}
+
+        {/* Student Name Login Pop-up (Mandatory first-time / editable) */}
+        {showLoginModal && (
+          <StudentLoginModal
+            currentName={profile.name}
+            onSaveName={(name) => {
+              handleUpdateProfileName(name);
+              setShowLoginModal(false);
+            }}
+            onClose={() => setShowLoginModal(false)}
+            isFirstLogin={!localStorage.getItem('tokoperahan_has_named')}
           />
         )}
 

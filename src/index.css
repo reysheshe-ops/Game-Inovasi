@@ -22,13 +22,27 @@
 
 @keyframes pulse-gentle {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  50% { transform: scale(1.04); }
 }
 
 @keyframes wobble {
   0%, 100% { transform: rotate(0deg); }
   25% { transform: rotate(-4deg); }
   75% { transform: rotate(4deg); }
+}
+
+/* 24+ FPS smooth cake slice split & knife cutting animation */
+@keyframes cakeCutKnife {
+  0% { transform: translateY(-16px) rotate(18deg) scale(0.9); opacity: 0; }
+  30% { transform: translateY(0px) rotate(0deg) scale(1.05); opacity: 1; }
+  60% { transform: translateY(4px) rotate(-4deg) scale(1); opacity: 1; }
+  100% { transform: translateY(8px) rotate(-10deg) scale(0.85); opacity: 0; }
+}
+
+@keyframes sliceSplitWedge {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(5px, -3px) scale(1.04); }
+  100% { transform: translate(8px, -4px) scale(1.06); }
 }
 
 .animate-steam {
@@ -47,10 +61,18 @@
   animation: wobble 0.6s ease-in-out infinite;
 }
 
+.animate-cake-cut {
+  animation: cakeCutKnife 0.35s ease-out forwards;
+}
+
+.animate-slice-split {
+  animation: sliceSplitWedge 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
 /* Custom fun scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: #FEF3C7;
@@ -62,4 +84,12 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #D97706;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

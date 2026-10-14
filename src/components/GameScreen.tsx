@@ -28,6 +28,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   onBackToMap,
   onNextLevel,
 }) => {
+  // Helper to create empty plate for given level
+  const createEmptyPlate = (): PlatedItem => {
+    if (level.id === 1) return { dishType: 'pizza' };
+    if (level.id === 2) return { dishType: 'chocolate', chocolateSlots: [null, null, null] };
+    if (level.id === 3) return { dishType: 'donut' };
+    return { dishType: 'pudding' };
+  };
+
   // Game states
   const [timeLeft, setTimeLeft] = useState<number>(level.timeLimitSeconds);
   const [score, setScore] = useState<number>(0);
@@ -42,12 +50,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   const orderCountRef = useRef<number>(0);
 
   // Plated item
-  const [plated, setPlated] = useState<PlatedItem>({ dishType: 'pizza' });
+  const [plated, setPlated] = useState<PlatedItem>(createEmptyPlate);
 
   // Modals & VFX
   const [correctionCustomer, setCorrectionCustomer] = useState<CustomerOrder | null>(null);
   const [showRecipeBook, setShowRecipeBook] = useState<boolean>(false);
   const [showSuccessBurst, setShowSuccessBurst] = useState<boolean>(false);
+  const [mistakeToast, setMistakeToast] = useState<string | null>(null);
 
   // Guard to ensure VFX is always destroyed and cannot block clicks
   useEffect(() => {
@@ -62,12 +71,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     totalOrders: 0,
     correctOrders: 0,
     wrongOrders: 0,
-    basicCorrect: 0,
-    basicTotal: 0,
-    equivCorrect: 0,
-    equivTotal: 0,
-    decCorrect: 0,
-    decTotal: 0,
+    level1Correct: 0,
+    level1Total: 0,
+    level2Correct: 0,
+    level2Total: 0,
+    level3Correct: 0,
+    level3Total: 0,
+    level4Correct: 0,
+    level4Total: 0,
     orderTimes: [] as number[],
   });
 
@@ -83,6 +94,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     orderCountRef.current = 2;
     setCustomers([initial1, initial2]);
     setSelectedCustomerId(initial1.id);
+    setPlated(createEmptyPlate());
     lastOrderStartTimeRef.current = Date.now();
 
     return () => {
@@ -150,17 +162,21 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         ? sessionStats.orderTimes.reduce((a, b) => a + b, 0) / sessionStats.orderTimes.length
         : 7.5;
 
-    const basicAcc =
-      sessionStats.basicTotal > 0
-        ? Math.round((sessionStats.basicCorrect / sessionStats.basicTotal) * 100)
+    const l1Acc =
+      sessionStats.level1Total > 0
+        ? Math.round((sessionStats.level1Correct / sessionStats.level1Total) * 100)
         : 100;
-    const equivAcc =
-      sessionStats.equivTotal > 0
-        ? Math.round((sessionStats.equivCorrect / sessionStats.equivTotal) * 100)
+    const l2Acc =
+      sessionStats.level2Total > 0
+        ? Math.round((sessionStats.level2Correct / sessionStats.level2Total) * 100)
         : 100;
-    const decAcc =
-      sessionStats.decTotal > 0
-        ? Math.round((sessionStats.decCorrect / sessionStats.decTotal) * 100)
+    const l3Acc =
+      sessionStats.level3Total > 0
+        ? Math.round((sessionStats.level3Correct / sessionStats.level3Total) * 100)
+        : 100;
+    const l4Acc =
+      sessionStats.level4Total > 0
+        ? Math.round((sessionStats.level4Correct / sessionStats.level4Total) * 100)
         : 100;
 
     const report: SessionReportItem = {
@@ -173,9 +189,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       totalOrders: sessionStats.totalOrders,
       correctOrders: sessionStats.correctOrders,
       wrongOrders: sessionStats.wrongOrders,
-      basicAccuracy: basicAcc,
-      equivalentAccuracy: equivAcc,
-      decimalPercentAccuracy: decAcc,
+      level1Accuracy: l1Acc,
+      level2Accuracy: l2Acc,
+      level3Accuracy: l3Acc,
+      level4Accuracy: l4Acc,
       averageTimeSeconds: parseFloat(avgTime.toFixed(1)),
       date: new Date().toLocaleDateString('id-ID', {
         day: 'numeric',
@@ -210,28 +227,54 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     const targetCustomer = customers.find((c) => c.id === selectedCustomerId) || customers[0];
     if (!targetCustomer) return;
 
-    let platedNumericValue = 0;
-    let isCorrectDishType = false;
+    let isCorrect = false;
 
-    if (targetCustomer.dishType === 'pizza' && plated.pizzaSlices && plated.pizzaSlices.count > 0) {
-      isCorrectDishType = true;
-      platedNumericValue =
-        (plated.pizzaSlices.count * plated.pizzaSlices.fractionPerSlice.numerator) /
-        plated.pizzaSlices.fractionPerSlice.denominator;
-    } else if (targetCustomer.dishType === 'chocolate' && plated.chocolatePieces && plated.chocolatePieces > 0) {
-      isCorrectDishType = true;
-      platedNumericValue = plated.chocolatePieces / 4;
-    } else if (targetCustomer.dishType === 'donut' && plated.donutCount && plated.donutCount > 0) {
-      isCorrectDishType = true;
-      platedNumericValue = plated.donutCount / 6;
-    } else if (targetCustomer.dishType === 'juice' && plated.juiceVolume !== undefined && plated.juiceVolume > 0) {
-      isCorrectDishType = true;
-      platedNumericValue = plated.juiceVolume;
+    // LEVEL 1: Pizza
+    if (level.id === 1) {
+      if (plated.pizzaSlices && plated.pizzaSlices.count > 0) {
+        const platedVal =
+          (plated.pizzaSlices.count * plated.pizzaSlices.fractionPerSlice.numerator) /
+          plated.pizzaSlices.fractionPerSlice.denominator;
+        isCorrect = Math.abs(platedVal - targetCustomer.targetNumericValue) < 0.03;
+      }
     }
 
-    // Compare with small floating point tolerance (e.g. 0.03)
-    const isValueEqual = Math.abs(platedNumericValue - targetCustomer.targetNumericValue) < 0.03;
-    const isCorrect = isCorrectDishType && isValueEqual;
+    // LEVEL 2: Chocolate ordering (Must fill 3 slots in ascending order)
+    else if (level.id === 2) {
+      if (
+        plated.chocolateSlots &&
+        plated.chocolateSlots.length === 3 &&
+        plated.chocolateSlots.every((s) => s !== null)
+      ) {
+        const v0 = plated.chocolateSlots[0]!.numerator / plated.chocolateSlots[0]!.denominator;
+        const v1 = plated.chocolateSlots[1]!.numerator / plated.chocolateSlots[1]!.denominator;
+        const v2 = plated.chocolateSlots[2]!.numerator / plated.chocolateSlots[2]!.denominator;
+
+        // Must be strictly ascending from smallest to largest: 1/8 (0.125) < 1/4 (0.25) < 1/2 (0.5)
+        isCorrect = v0 < v1 && v1 < v2;
+      }
+    }
+
+    // LEVEL 3: Donut Equivalence (Box 6 or Box 8)
+    else if (level.id === 3) {
+      if (plated.donutBox && plated.donutBox.count > 0) {
+        const val = plated.donutBox.count / plated.donutBox.boxType;
+        const isTargetMatch = Math.abs(val - targetCustomer.targetNumericValue) < 0.03;
+        const isAcceptedMatch =
+          targetCustomer.acceptedValues?.some((accepted) => Math.abs(val - accepted) < 0.03) ?? false;
+        isCorrect = isTargetMatch || isAcceptedMatch;
+      }
+    }
+
+    // LEVEL 4: Pudding comparison
+    else if (level.id === 4) {
+      if (plated.puddingChoice && targetCustomer.comparisonDetails) {
+        const correct = targetCustomer.comparisonDetails.correctFraction;
+        isCorrect =
+          plated.puddingChoice.fraction.numerator === correct.numerator &&
+          plated.puddingChoice.fraction.denominator === correct.denominator;
+      }
+    }
 
     const timeSpent = (Date.now() - lastOrderStartTimeRef.current) / 1000;
     lastOrderStartTimeRef.current = Date.now();
@@ -244,12 +287,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         totalOrders: prev.totalOrders + 1,
         correctOrders: prev.correctOrders + (isCorrect ? 1 : 0),
         wrongOrders: prev.wrongOrders + (isCorrect ? 0 : 1),
-        basicCorrect: prev.basicCorrect + (isCorrect && targetCustomer.category === 'basic' ? 1 : 0),
-        basicTotal: prev.basicTotal + (targetCustomer.category === 'basic' ? 1 : 0),
-        equivCorrect: prev.equivCorrect + (isCorrect && targetCustomer.category === 'equivalent' ? 1 : 0),
-        equivTotal: prev.equivTotal + (targetCustomer.category === 'equivalent' ? 1 : 0),
-        decCorrect: prev.decCorrect + (isCorrect && targetCustomer.category === 'decimal_percent' ? 1 : 0),
-        decTotal: prev.decTotal + (targetCustomer.category === 'decimal_percent' ? 1 : 0),
+        level1Correct: prev.level1Correct + (isCorrect && level.id === 1 ? 1 : 0),
+        level1Total: prev.level1Total + (level.id === 1 ? 1 : 0),
+        level2Correct: prev.level2Correct + (isCorrect && level.id === 2 ? 1 : 0),
+        level2Total: prev.level2Total + (level.id === 2 ? 1 : 0),
+        level3Correct: prev.level3Correct + (isCorrect && level.id === 3 ? 1 : 0),
+        level3Total: prev.level3Total + (level.id === 3 ? 1 : 0),
+        level4Correct: prev.level4Correct + (isCorrect && level.id === 4 ? 1 : 0),
+        level4Total: prev.level4Total + (level.id === 4 ? 1 : 0),
         orderTimes: nextTimes,
       };
     });
@@ -267,7 +312,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       setScore((prev) => prev + orderPoints);
 
       // Clear plate
-      setPlated({ dishType: 'pizza' });
+      setPlated(createEmptyPlate());
 
       // Remove served customer and introduce next customer
       orderCountRef.current += 1;
@@ -276,21 +321,39 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       setCustomers((prev) => {
         const remaining = prev.filter((c) => c.id !== targetCustomer.id);
         const updated = [...remaining, nextCustomer];
-        // Select next customer
         setSelectedCustomerId(updated[0]?.id || null);
         return updated;
       });
     } else {
-      // MISTAKE
+      // MISTAKE - PRD AC 2: Return food to kitchen and give 1-2s correction pause without blocking stars
       sound.playBoing();
       const updatedFailed = targetCustomer.failedAttempts + 1;
+
+      // Reset plate to kitchen
+      setPlated(createEmptyPlate());
+
+      // Show temporary non-blocking correction toast (1.5s)
+      setMistakeToast(
+        level.id === 2
+          ? 'Urutan belum tepat! Urutkan dari terkecil ke terbesar: 1/8 lalu 1/4 lalu 1/2!'
+          : level.id === 3
+          ? 'Porsi donat belum senilai! Coba periksa kembali jumlah donatnya!'
+          : level.id === 4
+          ? `Periksa kembali: pilih potongan yang ${
+              targetCustomer.comparisonDetails?.requirement === 'larger'
+                ? 'LEBIH BESAR'
+                : 'LEBIH KECIL'
+            }!`
+          : 'Porsi pizza belum pas! Cek kembali pecahan yang diminta pelanggan!'
+      );
+      setTimeout(() => setMistakeToast(null), 1800);
 
       // Update customer failed attempts
       setCustomers((prev) =>
         prev.map((c) => (c.id === targetCustomer.id ? { ...c, failedAttempts: updatedFailed } : c))
       );
 
-      // If failed >= 2 times on this customer, trigger Correction Pause!
+      // If failed >= 2 times on this customer, trigger Master Chef pause
       if (updatedFailed >= 2) {
         setCorrectionCustomer(targetCustomer);
       }
@@ -299,7 +362,19 @@ export const GameScreen: React.FC<GameScreenProps> = ({
 
   const handleClearPlate = () => {
     sound.playClick();
-    setPlated({ dishType: 'pizza' });
+    setPlated(createEmptyPlate());
+  };
+
+  const handleRemoveChocolateSlot = (idx: number) => {
+    sound.playClick();
+    if (plated.chocolateSlots) {
+      const next = [...plated.chocolateSlots];
+      next[idx] = null;
+      setPlated({
+        dishType: 'chocolate',
+        chocolateSlots: next,
+      });
+    }
   };
 
   const toggleSound = () => {
@@ -331,6 +406,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({
           <div className="flex items-center gap-1 sm:gap-1.5">
             <span className="text-[10px] sm:text-xs font-black text-amber-950 hidden md:inline">
               {level.areaName}
+            </span>
+            <span className="text-[9px] font-black bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded-full border border-amber-200 hidden sm:inline">
+              {level.cognitiveFocus}
             </span>
             <div className="flex items-center gap-1 bg-amber-100 px-1.5 py-0.5 rounded-full border border-amber-300">
               <Coins className="w-3 h-3 text-amber-600" />
@@ -386,8 +464,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         </div>
       </div>
 
-      {/* 2. ZONA ATAS (40% LAYAR): AREA ANTREAN PELANGGAN & BALON PESANAN (PRD Spec: Kendala A) */}
-      {/* Dedicated 40% area with highest Z-index so order bubbles are never overlapped or cut off */}
+      {/* 2. ZONA ATAS (40% LAYAR): AREA ANTREAN PELANGGAN & BALON PESANAN (PRD Spec 4) */}
       <div className="h-[40%] shrink-0 w-full bg-gradient-to-b from-sky-100/90 via-sky-50 to-amber-50/70 px-2 pt-1 pb-2 sm:pb-3 relative flex items-center justify-center overflow-hidden z-20">
         <CustomerQueue
           customers={customers}
@@ -402,25 +479,36 @@ export const GameScreen: React.FC<GameScreenProps> = ({
 
       {/* 3. ZONA BAWAH (54.5% LAYAR): MEJA SAJI (~15.3%) + AREA DAPUR (~39.2%) */}
       <div className="h-[54.5%] shrink-0 w-full flex flex-col overflow-hidden z-10">
-        {/* A. Meja Saji (Konter) - 28% of Zona Bawah (~15.3% of total screen) */}
+        {/* A. Meja Saji (Konter) */}
         <div className="h-[28%] shrink-0 w-full overflow-hidden">
           <ServingCounter
+            levelId={level.id}
             plated={plated}
             selectedCustomer={activeCustomer}
             onClearPlate={handleClearPlate}
             onServeDish={handleServeDish}
+            onRemoveChocolateSlot={handleRemoveChocolateSlot}
           />
         </div>
 
-        {/* B. Area Dapur Interaktif - 72% of Zona Bawah (~39.2% of total screen) */}
+        {/* B. Area Dapur Interaktif Khusus Sesuai Level */}
         <div className="h-[72%] shrink-0 w-full overflow-hidden">
           <KitchenStation
             levelId={level.id}
             plated={plated}
+            selectedCustomer={activeCustomer}
             onUpdatePlated={(newPlated) => setPlated(newPlated)}
           />
         </div>
       </div>
+
+      {/* Non-intrusive Mistake Toast (1.5-2 seconds timeout, no blocking VFX) */}
+      {mistakeToast && (
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 bg-rose-600 text-white px-4 py-2 rounded-2xl shadow-xl border-2 border-rose-300 text-xs font-black flex items-center gap-2 animate-bounce pointer-events-none">
+          <span>⚠️</span>
+          <span>{mistakeToast}</span>
+        </div>
+      )}
 
       {/* MODALS */}
       {/* Correction Pause (Koki Master) */}
@@ -434,7 +522,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       {/* Recipe Book Encyclopedia */}
       {showRecipeBook && <RecipeBookModal onClose={() => setShowRecipeBook(false)} />}
 
-      {/* Success Burst VFX on correct serving (100% pointer-events-none, never blocks clicks) */}
+      {/* Success Burst VFX on correct serving (100% pointer-events-none) */}
       {showSuccessBurst && (
         <SuccessBurstVFX onComplete={() => setShowSuccessBurst(false)} />
       )}
@@ -460,7 +548,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             setCoinsEarned(0);
             setCustomers([]);
             setIsLevelFinished(false);
-            setPlated({ dishType: 'pizza' });
+            setPlated(createEmptyPlate());
             // re-init
             const c1 = generateCustomerOrder(level.id, 0);
             const c2 = generateCustomerOrder(level.id, 1);
