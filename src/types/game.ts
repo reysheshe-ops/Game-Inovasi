@@ -5,6 +5,15 @@
 
 export type DishType = 'pizza' | 'chocolate' | 'donut' | 'pudding';
 
+export const TEAM_OPTIONS = [
+  { id: 'merah', name: 'Tim Merah', color: 'bg-rose-500', textColor: 'text-rose-600', badgeColor: 'bg-rose-100 border-rose-300 text-rose-800' },
+  { id: 'biru', name: 'Tim Biru', color: 'bg-sky-500', textColor: 'text-sky-600', badgeColor: 'bg-sky-100 border-sky-300 text-sky-800' },
+  { id: 'kuning', name: 'Tim Kuning', color: 'bg-amber-400', textColor: 'text-amber-600', badgeColor: 'bg-amber-100 border-amber-300 text-amber-900' },
+  { id: 'hijau', name: 'Tim Hijau', color: 'bg-emerald-500', textColor: 'text-emerald-600', badgeColor: 'bg-emerald-100 border-emerald-300 text-emerald-800' },
+  { id: 'ungu', name: 'Tim Ungu', color: 'bg-purple-500', textColor: 'text-purple-600', badgeColor: 'bg-purple-100 border-purple-300 text-purple-800' },
+  { id: 'oranye', name: 'Tim Oranye', color: 'bg-orange-500', textColor: 'text-orange-600', badgeColor: 'bg-orange-100 border-orange-300 text-orange-800' },
+];
+
 export interface FractionValue {
   numerator: number;
   denominator: number;
@@ -22,18 +31,13 @@ export interface CustomerOrder {
   customerName: string;
   avatarSeed: number;
   dishType: DishType;
-  promptText: string; // Speech bubble text
-  hintText: string; // Master Chef hint for correction pause
+  promptText: string;
+  hintText: string;
   verticalFraction?: FractionValue;
-  // Target numeric value (0 to 1) for checking correctness
   targetNumericValue: number;
-  // For Level 2 (Ordering): Target sequence of fractions in ascending order
   targetSequence?: FractionValue[];
-  // For Level 3 (Equivalent Fractions): Accepted numerical values (e.g. 0.5 can be 3/6 or 4/8)
   acceptedValues?: number[];
-  // For Level 4 (Comparison):
   comparisonDetails?: ComparisonDetail;
-  // Category for pedagogical report
   category:
     | 'unistructural'
     | 'multistructural_ordering'
@@ -46,19 +50,15 @@ export interface CustomerOrder {
 
 export interface PlatedItem {
   dishType: DishType;
-  // Level 1: Pizza
   pizzaSlices?: {
     fractionPerSlice: FractionValue;
     count: number;
   };
-  // Level 2: Chocolate ordering (3 slots: [slot1, slot2, slot3])
   chocolateSlots?: (FractionValue | null)[];
-  // Level 3: Donut boxes (box of 6 or box of 8)
   donutBox?: {
     boxType: 6 | 8;
     count: number;
   };
-  // Level 4: Pudding comparison choice
   puddingChoice?: {
     fraction: FractionValue;
     value: number;
@@ -82,6 +82,7 @@ export interface GameLevel {
 export interface SessionReportItem {
   id: string;
   studentName: string;
+  teamName: string;
   levelId: number;
   score: number;
   coins: number;
@@ -89,17 +90,34 @@ export interface SessionReportItem {
   totalOrders: number;
   correctOrders: number;
   wrongOrders: number;
-  level1Accuracy: number; // Mengenali Pecahan
-  level2Accuracy: number; // Mengurutkan Pecahan
-  level3Accuracy: number; // Pecahan Senilai
-  level4Accuracy: number; // Membandingkan Pecahan
+  level1Accuracy: number;
+  level2Accuracy: number;
+  level3Accuracy: number;
+  level4Accuracy: number;
   averageTimeSeconds: number;
   date: string;
 }
 
 export interface StudentProfile {
   name: string;
+  teamName: string;
+  avatarEmoji?: string;
   totalCoins: number;
   starsEarned: Record<number, number>; // levelId -> stars (1..4)
   highScores: Record<number, number>; // levelId -> score (1..4)
+}
+
+export interface StudentRecord {
+  id: string;
+  studentName: string;
+  teamName: string;
+  avatarEmoji: string;
+  scoreL1: number;
+  scoreL2: number;
+  scoreL3: number;
+  scoreL4: number;
+  totalMistakes: number;
+  totalTimeSeconds: number;
+  status: 'Mahir' | 'Butuh Bimbingan' | 'Remedial';
+  lastActive: string;
 }

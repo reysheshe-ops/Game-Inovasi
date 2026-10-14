@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { GameLevel, SessionReportItem, StudentProfile } from './types/game';
+import { GameLevel, SessionReportItem, StudentProfile, StudentRecord } from './types/game';
 import { GAME_LEVELS } from './services/levelData';
 import { LoadingScreen } from './components/LoadingScreen';
 import { MainMenu } from './components/MainMenu';
@@ -17,10 +17,100 @@ import { OfflineIndicator } from './components/PWAInstallButton';
 
 const INITIAL_PROFILE: StudentProfile = {
   name: 'Koki Cilik',
+  teamName: 'Tim Merah',
+  avatarEmoji: '👨‍🍳',
   totalCoins: 0,
   starsEarned: { 1: 0, 2: 0, 3: 0, 4: 0 },
   highScores: { 1: 0, 2: 0, 3: 0, 4: 0 },
 };
+
+// Initial realistic class ledger data for teachers
+const DEFAULT_CLASS_RECORDS: StudentRecord[] = [
+  {
+    id: 'std_1',
+    studentName: 'Budi Pratama',
+    teamName: 'Tim Merah',
+    avatarEmoji: '👨‍🍳',
+    scoreL1: 120,
+    scoreL2: 130,
+    scoreL3: 140,
+    scoreL4: 150,
+    totalMistakes: 1,
+    totalTimeSeconds: 145,
+    status: 'Mahir',
+    lastActive: 'Hari ini, 09:15',
+  },
+  {
+    id: 'std_2',
+    studentName: 'Siti Rahma',
+    teamName: 'Tim Biru',
+    avatarEmoji: '👩‍🍳',
+    scoreL1: 100,
+    scoreL2: 110,
+    scoreL3: 90,
+    scoreL4: 120,
+    totalMistakes: 2,
+    totalTimeSeconds: 160,
+    status: 'Mahir',
+    lastActive: 'Hari ini, 09:22',
+  },
+  {
+    id: 'std_3',
+    studentName: 'Doni Saputra',
+    teamName: 'Tim Kuning',
+    avatarEmoji: '🦁',
+    scoreL1: 80,
+    scoreL2: 70,
+    scoreL3: 60,
+    scoreL4: 80,
+    totalMistakes: 4,
+    totalTimeSeconds: 190,
+    status: 'Butuh Bimbingan',
+    lastActive: 'Hari ini, 09:30',
+  },
+  {
+    id: 'std_4',
+    studentName: 'Rani Maharani',
+    teamName: 'Tim Hijau',
+    avatarEmoji: '⭐',
+    scoreL1: 110,
+    scoreL2: 120,
+    scoreL3: 130,
+    scoreL4: 140,
+    totalMistakes: 1,
+    totalTimeSeconds: 155,
+    status: 'Mahir',
+    lastActive: 'Hari ini, 09:35',
+  },
+  {
+    id: 'std_5',
+    studentName: 'Edo Firmansyah',
+    teamName: 'Tim Ungu',
+    avatarEmoji: '🦊',
+    scoreL1: 50,
+    scoreL2: 40,
+    scoreL3: 30,
+    scoreL4: 40,
+    totalMistakes: 6,
+    totalTimeSeconds: 220,
+    status: 'Remedial',
+    lastActive: 'Hari ini, 09:40',
+  },
+  {
+    id: 'std_6',
+    studentName: 'Maya Kusuma',
+    teamName: 'Tim Oranye',
+    avatarEmoji: '🐱',
+    scoreL1: 90,
+    scoreL2: 85,
+    scoreL3: 75,
+    scoreL4: 95,
+    totalMistakes: 3,
+    totalTimeSeconds: 175,
+    status: 'Butuh Bimbingan',
+    lastActive: 'Hari ini, 09:45',
+  },
+];
 
 export default function App() {
   const [screen, setScreen] = useState<'loading' | 'main_menu' | 'level_map' | 'in_game'>('loading');
@@ -39,6 +129,16 @@ export default function App() {
     }
   });
 
+  // Class Ledger Records state
+  const [classStudents, setClassStudents] = useState<StudentRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('tokoperahan_class_students');
+      return saved ? JSON.parse(saved) : DEFAULT_CLASS_RECORDS;
+    } catch {
+      return DEFAULT_CLASS_RECORDS;
+    }
+  });
+
   // Session Reports state
   const [sessionReports, setSessionReports] = useState<SessionReportItem[]>(() => {
     try {
@@ -53,21 +153,35 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem('tokoperahan_profile', JSON.stringify(profile));
-    } catch {
-      // storage unavailable or full
-    }
+    } catch {}
   }, [profile]);
+
+  // Save class students to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('tokoperahan_class_students', JSON.stringify(classStudents));
+    } catch {}
+  }, [classStudents]);
 
   // Save reports to localStorage
   useEffect(() => {
     try {
       localStorage.setItem('tokoperahan_reports', JSON.stringify(sessionReports));
-    } catch {
-      // storage unavailable or full
-    }
+    } catch {}
   }, [sessionReports]);
 
-  // Check if student has answered the name prompt
+  // Check URL parameters for direct teacher access (?mode=guru or #guru)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const search = window.location.search;
+      const hash = window.location.hash;
+      if (search.includes('guru') || hash.includes('guru')) {
+        setShowTeacherReport(true);
+      }
+    }
+  }, []);
+
+  // Check if student has registered their name and team
   const handleLoadingComplete = () => {
     setScreen('main_menu');
     const hasNamed = localStorage.getItem('tokoperahan_has_named');
@@ -80,13 +194,115 @@ export default function App() {
     setProfile(newProfile);
   };
 
-  const handleUpdateProfileName = (newName: string) => {
-    setProfile((prev) => ({ ...prev, name: newName }));
+  const handleSaveStudentRegistration = (data: {
+    name: string;
+    teamName: string;
+    avatarEmoji: string;
+  }) => {
+    setProfile((prev) => ({
+      ...prev,
+      name: data.name,
+      teamName: data.teamName,
+      avatarEmoji: data.avatarEmoji,
+    }));
     localStorage.setItem('tokoperahan_has_named', 'true');
+
+    // Register or update student in the class roster
+    setClassStudents((prev) => {
+      const existingIdx = prev.findIndex((s) => s.studentName.toLowerCase() === data.name.toLowerCase());
+      if (existingIdx !== -1) {
+        const updated = [...prev];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          teamName: data.teamName,
+          avatarEmoji: data.avatarEmoji,
+          lastActive: 'Baru saja',
+        };
+        return updated;
+      }
+
+      const newStudent: StudentRecord = {
+        id: `std_${Date.now()}`,
+        studentName: data.name,
+        teamName: data.teamName,
+        avatarEmoji: data.avatarEmoji,
+        scoreL1: 0,
+        scoreL2: 0,
+        scoreL3: 0,
+        scoreL4: 0,
+        totalMistakes: 0,
+        totalTimeSeconds: 0,
+        status: 'Butuh Bimbingan',
+        lastActive: 'Baru saja',
+      };
+      return [newStudent, ...prev];
+    });
   };
 
+  // Background Tracker: Record session & update class student metrics
   const handleSaveSessionReport = (newReport: SessionReportItem) => {
     setSessionReports((prev) => [newReport, ...prev]);
+
+    // Update class roster for this student
+    setClassStudents((prev) => {
+      const existingIdx = prev.findIndex(
+        (s) => s.studentName.toLowerCase() === newReport.studentName.toLowerCase()
+      );
+
+      const levelScoreKey = `scoreL${newReport.levelId}` as 'scoreL1' | 'scoreL2' | 'scoreL3' | 'scoreL4';
+
+      if (existingIdx !== -1) {
+        const student = prev[existingIdx];
+        const updatedScores = {
+          scoreL1: newReport.levelId === 1 ? Math.max(student.scoreL1, newReport.score) : student.scoreL1,
+          scoreL2: newReport.levelId === 2 ? Math.max(student.scoreL2, newReport.score) : student.scoreL2,
+          scoreL3: newReport.levelId === 3 ? Math.max(student.scoreL3, newReport.score) : student.scoreL3,
+          scoreL4: newReport.levelId === 4 ? Math.max(student.scoreL4, newReport.score) : student.scoreL4,
+        };
+
+        const totalMistakes = student.totalMistakes + newReport.wrongOrders;
+        const totalTime = student.totalTimeSeconds + Math.round(newReport.averageTimeSeconds * newReport.totalOrders);
+
+        // Calculate mastery status
+        const avgScores =
+          (updatedScores.scoreL1 + updatedScores.scoreL2 + updatedScores.scoreL3 + updatedScores.scoreL4) / 4;
+        let status: 'Mahir' | 'Butuh Bimbingan' | 'Remedial' = 'Mahir';
+        if (totalMistakes > 5 || avgScores < 50) {
+          status = 'Remedial';
+        } else if (totalMistakes >= 3 || avgScores < 80) {
+          status = 'Butuh Bimbingan';
+        }
+
+        const updatedStudent: StudentRecord = {
+          ...student,
+          ...updatedScores,
+          totalMistakes,
+          totalTimeSeconds: totalTime,
+          status,
+          lastActive: 'Hari ini',
+        };
+
+        const copy = [...prev];
+        copy[existingIdx] = updatedStudent;
+        return copy;
+      } else {
+        const newStudent: StudentRecord = {
+          id: `std_${Date.now()}`,
+          studentName: newReport.studentName,
+          teamName: profile.teamName,
+          avatarEmoji: profile.avatarEmoji || '👨‍🍳',
+          scoreL1: newReport.levelId === 1 ? newReport.score : 0,
+          scoreL2: newReport.levelId === 2 ? newReport.score : 0,
+          scoreL3: newReport.levelId === 3 ? newReport.score : 0,
+          scoreL4: newReport.levelId === 4 ? newReport.score : 0,
+          totalMistakes: newReport.wrongOrders,
+          totalTimeSeconds: Math.round(newReport.averageTimeSeconds * newReport.totalOrders),
+          status: newReport.wrongOrders <= 1 ? 'Mahir' : 'Butuh Bimbingan',
+          lastActive: 'Hari ini',
+        };
+        return [newStudent, ...prev];
+      }
+    });
 
     // Optional background auto-sync to cloud if configured
     try {
@@ -98,23 +314,22 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             studentName: profile.name,
+            teamName: profile.teamName,
             report: newReport,
             timestamp: new Date().toISOString(),
           }),
         }).catch(() => {});
       }
-    } catch {
-      // silent background sync failure
-    }
+    } catch {}
   };
 
-  const handleClearReports = () => {
+  const handleClearClassData = () => {
+    setClassStudents([]);
     setSessionReports([]);
     try {
+      localStorage.removeItem('tokoperahan_class_students');
       localStorage.removeItem('tokoperahan_reports');
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   const [isPortrait, setIsPortrait] = useState<boolean>(() => {
@@ -159,7 +374,7 @@ export default function App() {
             onStartGame={() => setScreen('level_map')}
             onOpenRecipeBook={() => setShowRecipeBook(true)}
             onOpenTeacherReport={() => setShowTeacherReport(true)}
-            onUpdateProfileName={handleUpdateProfileName}
+            onUpdateProfileName={(name) => handleSaveStudentRegistration({ name, teamName: profile.teamName, avatarEmoji: profile.avatarEmoji || '👨‍🍳' })}
             onPromptLogin={() => setShowLoginModal(true)}
           />
         )}
@@ -197,12 +412,14 @@ export default function App() {
           />
         )}
 
-        {/* Student Name Login Pop-up (Mandatory first-time / editable) */}
+        {/* Student Name & Team Login Pop-up (Mandatory registration per PRD 3.A) */}
         {showLoginModal && (
           <StudentLoginModal
             currentName={profile.name}
-            onSaveName={(name) => {
-              handleUpdateProfileName(name);
+            currentTeam={profile.teamName}
+            currentAvatar={profile.avatarEmoji}
+            onSaveProfile={(data) => {
+              handleSaveStudentRegistration(data);
               setShowLoginModal(false);
             }}
             onClose={() => setShowLoginModal(false)}
@@ -210,17 +427,19 @@ export default function App() {
           />
         )}
 
-        {/* Shared Modals accessible from everywhere */}
+        {/* Shared Modals */}
         {showRecipeBook && (
           <RecipeBookModal onClose={() => setShowRecipeBook(false)} />
         )}
 
+        {/* Full-featured Teacher Dashboard with Team Tracking & 6-digit PIN */}
         {showTeacherReport && (
           <TeacherReportModal
             currentProfile={profile}
             sessionReports={sessionReports}
-            onUpdateProfileName={handleUpdateProfileName}
-            onClearReports={handleClearReports}
+            classStudents={classStudents}
+            onUpdateClassStudents={setClassStudents}
+            onClearClassData={handleClearClassData}
             onClose={() => setShowTeacherReport(false)}
           />
         )}

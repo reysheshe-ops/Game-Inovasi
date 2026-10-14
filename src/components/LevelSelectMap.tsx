@@ -45,9 +45,14 @@ export const LevelSelectMap: React.FC<LevelSelectMapProps> = ({
         </button>
 
         <div className="text-center">
-          <h1 className="text-sm sm:text-lg font-black text-amber-950 drop-shadow-xs">
-            Peta Restoran Kota Pecahan (4 Level Belajar)
-          </h1>
+          <div className="flex items-center justify-center gap-1.5">
+            <h1 className="text-sm sm:text-lg font-black text-amber-950 drop-shadow-xs">
+              Peta Restoran Kota Pecahan
+            </h1>
+            <span className="text-[10px] font-black bg-white/90 text-amber-900 px-2 py-0.5 rounded-full border border-amber-300">
+              {profile.avatarEmoji || '👨‍🍳'} {profile.name} • {profile.teamName}
+            </span>
+          </div>
           <p className="text-[9px] sm:text-[11px] text-amber-900 font-bold">
             Dari Mengenali Pecahan (Unistructural) hingga Membandingkan (Relational)
           </p>

@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
-import { StudentProfile } from '../types/game';
-import { Play, BookOpen, Volume2, VolumeX, Sparkles, Edit3, Lock } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { StudentProfile, TEAM_OPTIONS } from '../types/game';
+import { Play, BookOpen, Volume2, VolumeX, Sparkles, Edit3, Lock, ShieldCheck } from 'lucide-react';
 import { sound } from '../services/soundEffects';
 import { PWAInstallButton } from './PWAInstallButton';
 import { AnimatedChefMascot } from './AnimatedChefMascot';
-import { FractionDisplay } from './FractionDisplay';
 
 interface MainMenuProps {
   profile: StudentProfile;
@@ -24,24 +23,57 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   onPromptLogin,
 }) => {
   const [isMuted, setIsMuted] = useState(sound.getIsMuted());
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState(profile.name);
+
+  // Secret 3-second hold for Teacher Lock (PRD Section 3.B)
+  const [holdProgress, setHoldProgress] = useState<number>(0);
+  const [isHolding, setIsHolding] = useState<boolean>(false);
+  const holdIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startHold = () => {
+    setIsHolding(true);
+    setHoldProgress(0);
+    const startTime = Date.now();
+    holdIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(100, (elapsed / 3000) * 100);
+      setHoldProgress(progress);
+      if (progress >= 100) {
+        clearInterval(holdIntervalRef.current!);
+        holdIntervalRef.current = null;
+        setIsHolding(false);
+        setHoldProgress(0);
+        sound.playKaching();
+        onOpenTeacherReport();
+      }
+    }, 50);
+  };
+
+  const cancelHold = () => {
+    if (holdIntervalRef.current) {
+      clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+    setIsHolding(false);
+    setHoldProgress(0);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (holdIntervalRef.current) {
+        clearInterval(holdIntervalRef.current);
+      }
+    };
+  }, []);
 
   const toggleSound = () => {
     const muted = sound.toggleMute();
     setIsMuted(muted);
   };
 
-  const handleSaveName = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (nameInput.trim()) {
-      onUpdateProfileName(nameInput.trim());
-      setIsEditingName(false);
-      sound.playClick();
-    }
-  };
-
   const totalStars = Object.values(profile.starsEarned).reduce((a, b) => a + b, 0);
+
+  const teamMeta =
+    TEAM_OPTIONS.find((t) => t.name === profile.teamName) || TEAM_OPTIONS[0];
 
   return (
     <div className="w-full h-full bg-gradient-to-br from-[#118AB2] via-sky-300 to-[#FFD166] flex flex-col justify-between p-2.5 sm:p-4 select-none relative overflow-hidden">
@@ -53,53 +85,34 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
       {/* TOP BAR: Profile Card & Quick Settings */}
       <div className="flex items-center justify-between z-10 w-full shrink-0">
-        {/* Student Chef Profile Tag */}
+        {/* Student Chef Profile Tag with Team Badge */}
         <div className="bg-white/95 rounded-2xl p-1.5 sm:p-2 border-2 sm:border-3 border-amber-300 shadow-md flex items-center gap-2">
           <div
             onClick={onPromptLogin}
             className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-400 hover:bg-amber-500 cursor-pointer flex items-center justify-center text-lg shadow-xs transition"
-            title="Ubah Profil / Nama"
+            title="Ubah Profil & Tim Belajar"
           >
-            👨‍🍳
+            {profile.avatarEmoji || '👨‍🍳'}
           </div>
           <div>
-            {isEditingName ? (
-              <form onSubmit={handleSaveName} className="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  className="px-1.5 py-0.5 text-xs font-bold border rounded-md max-w-[110px]"
-                  maxLength={15}
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  className="px-2 py-0.5 bg-amber-500 text-white rounded-md text-[10px] font-bold"
-                >
-                  OK
-                </button>
-              </form>
-            ) : (
-              <div className="flex items-center gap-1">
-                <span className="text-xs sm:text-sm font-black text-amber-950">
-                  {profile.name}
-                </span>
-                <button
-                  onClick={() => {
-                    if (onPromptLogin) {
-                      onPromptLogin();
-                    } else {
-                      setIsEditingName(true);
-                    }
-                  }}
-                  className="text-gray-400 hover:text-amber-700 p-0.5"
-                  title="Ganti Nama Siswa"
-                >
-                  <Edit3 className="w-3 h-3" />
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs sm:text-sm font-black text-amber-950">
+                {profile.name}
+              </span>
+              {/* Team Pill Badge */}
+              <span
+                className={`text-[9px] font-black px-2 py-0.2 rounded-full border ${teamMeta.badgeColor}`}
+              >
+                {profile.teamName}
+              </span>
+              <button
+                onClick={onPromptLogin}
+                className="text-gray-400 hover:text-amber-700 p-0.5"
+                title="Ganti Nama / Tim Siswa"
+              >
+                <Edit3 className="w-3 h-3" />
+              </button>
+            </div>
             <div className="flex items-center gap-1.5 text-[9px] sm:text-[11px] font-extrabold text-amber-800">
               <span>🪙 {profile.totalCoins} Koin</span>
               <span>•</span>
@@ -108,20 +121,45 @@ export const MainMenu: React.FC<MainMenuProps> = ({
           </div>
         </div>
 
-        {/* Top Right: Discreet Teacher Area, Audio Mute & PWA Install Button */}
+        {/* Top Right: Secret 3s-Hold Teacher Lock, Audio Mute & PWA Install Button */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Discreet Teacher Dashboard Access */}
-          <button
-            onClick={() => {
-              sound.playClick();
-              onOpenTeacherReport();
-            }}
-            className="flex items-center gap-1 px-2.5 py-1 bg-white/80 hover:bg-white text-slate-700 hover:text-sky-700 rounded-xl shadow-xs border border-sky-200 text-[10px] sm:text-xs font-bold transition active:scale-95"
-            title="Akses Khusus Guru / Pembimbing"
-          >
-            <Lock className="w-3 h-3 text-sky-600" />
-            <span className="hidden sm:inline">Dasbor Guru</span>
-          </button>
+          {/* Secret Teacher Lock Button (Hold for 3 seconds per PRD Section 3.B) */}
+          <div className="relative">
+            <button
+              onMouseDown={startHold}
+              onMouseUp={cancelHold}
+              onMouseLeave={cancelHold}
+              onTouchStart={startHold}
+              onTouchEnd={cancelHold}
+              onClick={() => {
+                // If clicked briefly, give teacher hint or open
+                if (holdProgress < 90) {
+                  sound.playBlop();
+                }
+              }}
+              className="relative overflow-hidden flex items-center gap-1 px-2.5 py-1 bg-white/80 hover:bg-white text-slate-700 hover:text-sky-700 rounded-xl shadow-xs border border-sky-200 text-[10px] sm:text-xs font-bold transition active:scale-95 cursor-pointer"
+              title="Akses Rahasia Guru (Tahan tombol ini selama 3 detik)"
+            >
+              {/* Fill progress background */}
+              {isHolding && (
+                <div
+                  className="absolute inset-0 bg-sky-500/30 transition-all duration-75"
+                  style={{ width: `${holdProgress}%` }}
+                />
+              )}
+              <Lock className="w-3 h-3 text-sky-600 relative z-10" />
+              <span className="hidden sm:inline relative z-10">
+                {isHolding ? `Tahan (${Math.round((3000 - (holdProgress / 100) * 3000) / 1000)}s)...` : 'Area Guru'}
+              </span>
+            </button>
+
+            {/* Floating tooltip hint on hover */}
+            {isHolding && (
+              <div className="absolute -bottom-7 right-0 whitespace-nowrap bg-slate-900 text-white text-[9px] font-bold px-2 py-0.5 rounded-lg shadow-md pointer-events-none animate-fadeIn z-50">
+                Tahan 3 detik untuk membuka Dasbor Guru
+              </div>
+            )}
+          </div>
 
           <PWAInstallButton variant="badge" />
 

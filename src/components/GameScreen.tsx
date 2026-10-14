@@ -182,6 +182,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     const report: SessionReportItem = {
       id: `session_${Date.now()}`,
       studentName: profile.name,
+      teamName: profile.teamName || 'Tim Merah',
       levelId: level.id,
       score,
       coins: coinsEarned,
